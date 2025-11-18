@@ -1,15 +1,30 @@
 use rand::Rng;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::io;
+use std::path::Path;
+use thiserror::Error;
 
 const BRAIN_MUTATION_RATE: f32 = 5.0;
 const BRAIN_MUTATION_VARIATION: f32 = 0.5;
 
-#[derive(Clone)]
+#[derive(Error, Debug)]
+pub enum NeuralNetError {
+    #[error("IO error: {0}")]
+    Io(#[from] io::Error),
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
+    #[error("Invalid network structure: {0}")]
+    InvalidStructure(String),
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Net {
     n_inputs: usize,
     layers: Vec<Layer>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 struct Layer {
     nodes: Vec<Vec<f64>>,
 }
@@ -40,9 +55,42 @@ impl Net {
         }
     }
 
+    /// Save the neural network to a file
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), NeuralNetError> {
+        let json = serde_json::to_string_pretty(self)?;
+        fs::write(path, json)?;
+        Ok(())
+    }
+
+    /// Load a neural network from a file
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, NeuralNetError> {
+        let json = fs::read_to_string(path)?;
+        let net: Net = serde_json::from_str(&json)?;
+        Ok(net)
+    }
+
+    /// Get the number of inputs
+    pub fn get_input_count(&self) -> usize {
+        self.n_inputs
+    }
+
+    /// Get the layer sizes
+    pub fn get_layer_sizes(&self) -> Vec<usize> {
+        let mut sizes = vec![self.n_inputs];
+        for layer in &self.layers {
+            sizes.push(layer.nodes.len());
+        }
+        sizes
+    }
+
     pub fn predict(&self, inputs: &Vec<f64>) -> Vec<Vec<f64>> {
         if inputs.len() != self.n_inputs {
-            panic!("Bad input size");
+            eprintln!(
+                "Warning: Bad input size. Expected {}, got {}",
+                self.n_inputs,
+                inputs.len()
+            );
+            return vec![inputs.clone()];
         }
 
         let mut outputs = Vec::new();

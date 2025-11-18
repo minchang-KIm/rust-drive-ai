@@ -29,6 +29,7 @@ impl Plugin for GuiPlugin {
             .insert_resource(Settings::default())
             .insert_resource(SimStats::default())
             .add_system(stats_dialog_system)
+            .add_system(keyboard_shortcut_system)
             .add_system(generation_count_stats_system)
             .add_system(max_score_stats_system)
             .add_system(num_cars_stats_system)
@@ -233,7 +234,47 @@ fn stats_dialog_system(
                         settings.restart_sim = true;
                     };
                 });
+
+            egui::CollapsingHeader::new("Save/Load")
+                .default_open(true)
+                .show(ui, |ui| {
+                    ui.label("Keyboard shortcuts:");
+                    ui.label("  [S] - Save best brain");
+                    ui.label("  [L] - Load brain");
+                    ui.label("  [E] - Export statistics");
+                    ui.separator();
+
+                    if ui.button("💾 Save Best Brain (S)").clicked() {
+                        settings.save_best_brain = true;
+                    };
+                    if ui.button("📁 Load Brain (L)").clicked() {
+                        settings.load_brain = true;
+                    };
+                    if ui.button("📊 Export Statistics (E)").clicked() {
+                        settings.export_stats = true;
+                    };
+                });
         });
+}
+
+fn keyboard_shortcut_system(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut settings: ResMut<Settings>,
+) {
+    // Save best brain with 'S' key
+    if keyboard_input.just_pressed(KeyCode::S) {
+        settings.save_best_brain = true;
+    }
+
+    // Load brain with 'L' key
+    if keyboard_input.just_pressed(KeyCode::L) {
+        settings.load_brain = true;
+    }
+
+    // Export statistics with 'E' key
+    if keyboard_input.just_pressed(KeyCode::E) {
+        settings.export_stats = true;
+    }
 }
 
 fn nn_viz_system(mut contexts: EguiContexts, best_brain: Res<BrainToDisplay>) {

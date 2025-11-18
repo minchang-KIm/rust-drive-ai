@@ -12,9 +12,11 @@ pub struct PopulationPlugin;
 impl Plugin for PopulationPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.insert_resource(MaxDistanceTravelled(0.0))
+            .insert_resource(BestBrain::default())
             .add_startup_system(setup)
             .add_system(population_stats_system)
-            .add_system(generation_reset_system);
+            .add_system(generation_reset_system)
+            .add_system(save_load_system);
     }
 }
 
@@ -26,9 +28,11 @@ fn population_stats_system(
     mut sim_stats: ResMut<SimStats>,
     mut max_distance_travelled: ResMut<MaxDistanceTravelled>,
     mut brain_on_display: ResMut<BrainToDisplay>,
+    mut best_brain: ResMut<BestBrain>,
     mut query: Query<(&Transform, &Brain, &mut Fitness), With<Car>>,
 ) {
     let mut max_fitness = 0.0;
+    let mut best_brain_nn: Option<&Net> = None;
     sim_stats.num_cars_alive = query.iter().len();
 
     for (transform, brain, mut fitness) in query.iter_mut() {
@@ -38,6 +42,48 @@ fn population_stats_system(
             brain_on_display.0 = brain.nn_outputs.clone();
             sim_stats.max_current_score = fitness.0;
             max_distance_travelled.0 = transform.translation.y;
+            best_brain_nn = Some(&brain.nn);
+        }
+    }
+
+    // Update best brain
+    if let Some(nn) = best_brain_nn {
+        best_brain.0 = Some(nn.clone());
+    }
+}
+
+fn save_load_system(
+    mut settings: ResMut<Settings>,
+    sim_stats: Res<SimStats>,
+    best_brain: Res<BestBrain>,
+) {
+    // Handle save best brain
+    if settings.save_best_brain {
+        settings.save_best_brain = false;
+        match best_brain.save_auto() {
+            Ok(filename) => {
+                info!("Successfully saved best brain to: {}", filename);
+                println!("✓ Best brain saved to: {}", filename);
+            }
+            Err(e) => {
+                error!("Failed to save best brain: {}", e);
+                println!("✗ Failed to save best brain: {}", e);
+            }
+        }
+    }
+
+    // Handle export statistics
+    if settings.export_stats {
+        settings.export_stats = false;
+        match sim_stats.export_auto() {
+            Ok(filename) => {
+                info!("Successfully exported statistics to: {}", filename);
+                println!("✓ Statistics exported to: {}", filename);
+            }
+            Err(e) => {
+                error!("Failed to export statistics: {}", e);
+                println!("✗ Failed to export statistics: {}", e);
+            }
         }
     }
 }
@@ -53,6 +99,40 @@ fn generation_reset_system(
     bounds_truck_query: Query<Entity, With<BoundControlTruck>>,
 ) {
     let num_cars = cars_count_query.iter().count();
+
+    // Handle load brain request
+    if settings.load_brain {
+        settings.load_brain = false;
+        match BestBrain::load_latest() {
+            Ok(loaded_brain) => {
+                info!("Successfully loaded brain from saves");
+                println!("✓ Brain loaded successfully");
+
+                // Despawn all existing cars and enemies
+                cars_query.for_each(|(e, _, _)| commands.entity(e).despawn());
+                bounds_truck_query.for_each(|t| commands.entity(t).despawn());
+                enemy_query.for_each(|e| commands.entity(e).despawn());
+
+                // Create new generation with loaded brain
+                let mut new_brains = Vec::new();
+                for _ in 0..NUM_AI_CARS {
+                    let mut brain = loaded_brain.clone();
+                    brain.mutate();
+                    new_brains.push(brain);
+                }
+
+                spawn_enemies(&mut commands, &asset_server);
+                spawn_bound_trucks(&mut commands, &asset_server);
+                spawn_cars(&mut commands, &asset_server, &mut settings, Some(new_brains));
+                return;
+            }
+            Err(e) => {
+                error!("Failed to load brain: {}", e);
+                println!("✗ Failed to load brain: {}", e);
+            }
+        }
+    }
+
     if num_cars > 0 {
         return;
     }
@@ -83,6 +163,8 @@ fn generation_reset_system(
     // update stats
     sim_stats.generation_count += 1;
     sim_stats.fitness.push(max_fitness);
+
+    info!("Generation {} complete. Max fitness: {}", sim_stats.generation_count, max_fitness);
 
     // respawn everything
     spawn_enemies(&mut commands, &asset_server);
