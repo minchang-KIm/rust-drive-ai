@@ -17,18 +17,34 @@ Here's a devlog of how this was built
 
 [![youtube](https://img.youtube.com/vi/Pq1sKS-q1sA/0.jpg)](https://youtu.be/Pq1sKS-q1sA)
 
+## Prerequisites
+- Rust 1.70 or higher
+- Cargo (comes with Rust)
+
 ## Usage
 - Clone the repo
     ```
     git clone git@github.com:bones-ai/rust-drive-ai.git
     cd rust-drive-ai
     ```
+- Build the project
+    ```
+    cargo build --release
+    ```
 - Run the simulation
-    ``` 
+    ```
     cargo run --release
     ```
+
 ## Configurations
 - The project config file is located at `src/configs.rs`
+
+## Technical Details
+- Built with Rust and Bevy 0.10.1 game engine
+- Uses genetic algorithms for AI training
+- Neural network controlled cars with ray-cast sensors
+- Physics simulation powered by Rapier2D
+- Audio features disabled for cross-platform compatibility
 
 ## Forks
 Here's a list of of forks that extend this project, let me know if you have an interesting fork to add:

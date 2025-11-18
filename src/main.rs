@@ -1,14 +1,11 @@
 use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     math::vec3,
     prelude::*,
-    window::{PresentMode, WindowMode},
 };
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, DefaultInspectorConfigPlugin};
 use bevy_pancam::{PanCam, PanCamPlugin};
 use bevy_rapier2d::{
     prelude::{Collider, NoUserData, RapierConfiguration, RapierPhysicsPlugin, RigidBody},
-    render::RapierDebugRenderPlugin,
 };
 
 use steering::{

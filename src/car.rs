@@ -75,12 +75,12 @@ impl Plugin for CarPlugin {
 }
 
 fn position_based_movement_system(
-    controls: CarControls, 
+    controls: CarControls,
     transform: &mut Transform
 ) {
     let w_key = controls.0;
     let a_key = controls.1;
-    let s_key = controls.2;
+    let _s_key = controls.2;
     let d_key = controls.3;
 
     let time_step = 1.0 / 60.0;
@@ -133,7 +133,7 @@ fn collision_events_system(
 }
 
 fn car_nn_controlled_system(
-    time: Res<Time>,
+    _time: Res<Time>,
     mut car_query: Query<(&mut Speed, &mut TurnSpeed, &mut Brain, &mut Transform), With<Car>>,
 ) {
     for (mut speed, mut turn_speed, mut brain, mut transform) in car_query.iter_mut() {
@@ -238,6 +238,7 @@ fn update_car_input(
     speed.0 = speed.0.clamp(-MAX_SPEED + MAX_SPEED / 2.0, MAX_SPEED);
 }
 
+#[allow(dead_code)]
 fn car_gas_system(
     time: Res<Time>,
     mut query: Query<(&Transform, &Speed, &mut Velocity), With<Car>>,
@@ -255,6 +256,7 @@ fn car_gas_system(
     }
 }
 
+#[allow(dead_code)]
 fn car_steer_system(
     time: Res<Time>,
     mut query: Query<(&Speed, &TurnSpeed, &mut Velocity), With<Car>>,
@@ -294,7 +296,7 @@ fn sensors_system(
     rapier_context: Res<RapierContext>,
     mut query: Query<(&Transform, &Velocity, &mut Brain, &Speed, &TurnSpeed), With<Car>>,
 ) {
-    for (transform, velocity, mut brain, speed, turn_speed) in query.iter_mut() {
+    for (transform, _velocity, mut brain, _speed, _turn_speed) in query.iter_mut() {
         let raycast_filter = CollisionGroups {
             memberships: Group::GROUP_1,
             filters: Group::GROUP_2,
